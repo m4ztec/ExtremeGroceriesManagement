@@ -1,0 +1,23 @@
+﻿@page "/ItemCatalog"
+@using Models
+
+<h1>Catalog</h1>
+
+<InputText @bind-Value="@hiText" placeholder="Search"></InputText>
+
+@foreach(var hi in products)
+{
+<div>@hi.Name</div>
+}
+
+@code {
+
+    string hiText = "";
+    Product[] products = [
+        new Product{Id = "1", Name = "banana"},
+        new Product{Id = "1", Name = "Apple"},
+        new Product{Id = "1", Name = "Orange"},
+        new Product{Id = "1", Name = "Strawberry"}
+        ];
+
+}
