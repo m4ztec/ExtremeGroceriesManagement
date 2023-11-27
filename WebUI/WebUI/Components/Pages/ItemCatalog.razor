@@ -5,10 +5,26 @@
 
 <InputText @bind-Value="@hiText" placeholder="Search"></InputText>
 
-@foreach(var hi in products)
-{
-<div>@hi.Name</div>
-}
+<div class="container p-2">
+    <div class="row">
+        <div class="col-1">
+            Category
+        </div>
+        <div class="col-3">
+            <div class="container">
+                <div class="row row-cols-2">   
+                    @foreach(var hi in products)
+                    {
+                    <div class="col border border-1 border-dark">
+                        @hi.Name
+                    </div>
+                    }
+                </div>
+            </div>
+        </div>   
+    </div>
+</div>
+
 
 @code {
 
