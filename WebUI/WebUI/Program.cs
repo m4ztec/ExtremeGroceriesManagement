@@ -1,12 +1,15 @@
-using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.FluentUI.AspNetCore.Components;
 using WebUI.Client.Pages;
 using WebUI.Components;
 using WebUI.Components.Account;
 using WebUI.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDbContext<WebUIContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("WebUIContext") ?? throw new InvalidOperationException("Connection string 'WebUIContext' not found.")));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -25,9 +28,9 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+var UserInfoConnectionString = builder.Configuration.GetConnectionString("UserInfo") ?? throw new InvalidOperationException("Connection string 'UserInfo' not found.");
+builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(UserInfoConnectionString));
+//builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(UserInfoConnectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -37,9 +40,11 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+builder.Services.AddFluentUIComponents();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline.l
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();

@@ -1,39 +1,153 @@
 ﻿@page "/ItemCatalog"
 @using Models
+@inject IDialogService DialogService
+
+@rendermode InteractiveServer
 
 <h1>Catalog</h1>
 
-<InputText @bind-Value="@hiText" placeholder="Search"></InputText>
-
-<div class="container p-2">
+<div class="container">
     <div class="row">
-        <div class="col-1">
-            Category
-        </div>
-        <div class="col-3">
-            <div class="container">
-                <div class="row row-cols-2">   
-                    @foreach(var hi in products)
-                    {
-                    <div class="col border border-1 border-dark">
-                        @hi.Name
-                    </div>
-                    }
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <EditForm Model="product" OnSubmit="AddProduct" Enhance>
+                        <div class="hstack gap-2">
+                            <label class="label-control">Fullname</label>
+                            <InputText @bind-Value="product.Name" class="form-control"></InputText>
+                            <label class="label-control">Selected Quantity</label>
+                            <InputNumber @bind-Value="SelectedQuantity" class="form-control "></InputNumber>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </EditForm>
+                </div>
+                <div class="card-body">
+                    <FluentDataGrid Items="@productsQueryable" Pagination="@pagination">
+                        <PropertyColumn Property="@(p => p.Id)" Sortable="true" Align="Align.Center" />
+                        <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
+                            <ColumnOptions>
+                                <div class="search-box">
+                                    <input type="search" autofocus @onchange="SearchPerson" placeholder="Person name..." />
+                                </div>
+                            </ColumnOptions>
+                        </PropertyColumn>
+                        <PropertyColumn Title="Quantity" Property="@(p => p.Quantity)" Sortable="true" />
+                        <TemplateColumn Title="Action">
+
+                            <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">
+                                Open Dialog
+                            </FluentButton>
+
+                        </TemplateColumn>
+                    </FluentDataGrid>
                 </div>
             </div>
-        </div>   
+        </div>
     </div>
 </div>
 
-
 @code {
 
-    string hiText = "";
-    Product[] products = [
-        new Product{Id = "1", Name = "banana"},
-        new Product{Id = "1", Name = "Apple"},
-        new Product{Id = "1", Name = "Orange"},
-        new Product{Id = "1", Name = "Strawberry"}
-        ];
+    //Pagination
+    PaginationState pagination = new PaginationState { ItemsPerPage = 3 };
+    IQueryable<Product> productsQueryable = Enumerable.Empty<Product>().AsQueryable();
+
+    [SupplyParameterFromForm]
+    Product product { get; set; } = new();
+    int SelectedQuantity;
+    static List<Product> ProductsList = [];
+
+    protected override void OnInitialized()
+    {
+        ConvertListToQueryable();
+    }
+
+    async Task OpenDialogAsync(Product seletedProduct)
+    {
+        DialogParameters parameters = new()
+            {
+                Title = $"Editing {seletedProduct.Name}",
+                Width = "500px",
+                Height = "500px",
+                TrapFocus = false,
+                Modal = true,
+                PreventScroll = true
+            };
+
+        IDialogReference dialog = await DialogService.ShowDialogAsync<EditDialog>(seletedProduct, parameters);
+        DialogResult? result = await dialog.Result;
+
+
+        if (result.Data is not null)
+        {
+            Product? simplePerson = result.Data as Product;
+            Console.WriteLine($"Dialog closed by {simplePerson?.Name} {simplePerson?.Quantity} ({simplePerson?.Description}) - Canceled: {result.Cancelled}");
+        }
+        else
+        {
+            Console.WriteLine($"Dialog closed - Canceled: {result.Cancelled}");
+        }
+    }
+
+    private void AddProduct()
+    {
+        if (product.Name is null) return;
+        ProductsList.Add(product);
+        product = new();
+        GetDataAgain();
+        return;
+    }
+
+    // Load data from List to the Queryable container
+    private void ConvertListToQueryable()
+    {
+        if (ProductsList is null) return;
+        foreach (var person in ProductsList.OrderBy(_ => _.Id))
+        {
+            productsQueryable = productsQueryable.Concat(new[] { person }.AsQueryable());
+        }
+        pagination.TotalItemCountChanged += (sender, eventArgs) => StateHasChanged();
+    }
+
+    //clear container and reload
+    void GetDataAgain()
+    {
+        productsQueryable = Enumerable.Empty<Product>().AsQueryable();
+        ConvertListToQueryable();
+    }
+
+    void Edit(Product incomingModel)
+    {
+      
+    }
+
+    void Delete(Product incomingModel)
+    {
+        ProductsList.Remove(ProductsList.FirstOrDefault(_ => _.Id == incomingModel.Id));
+        if (ProductsList is null) return;
+        GetDataAgain();
+    }
+
+    //Search Person
+    void SearchPerson(ChangeEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(e.Value!.ToString()))
+        {
+            var result = ProductsList.Where(c => c.Name!.Contains(e.Value!.ToString()!, StringComparison.CurrentCultureIgnoreCase)).ToList();
+            productsQueryable = Enumerable.Empty<Product>().AsQueryable();
+            if (result.Count == 0)
+            {
+                return;
+            }
+
+            if (result.Any())
+            {
+                foreach (var person in result.OrderBy(_ => _.Id))
+                    productsQueryable = productsQueryable.Concat(new[] { person }.AsQueryable());
+            }
+            return;
+        }
+        GetDataAgain();
+    }
 
 }
