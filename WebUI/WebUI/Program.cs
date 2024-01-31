@@ -8,8 +8,6 @@ using WebUI.Components.Account;
 using WebUI.Data;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<WebUIContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("WebUIContext") ?? throw new InvalidOperationException("Connection string 'WebUIContext' not found.")));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -29,8 +27,9 @@ builder.Services.AddAuthentication(options =>
     .AddIdentityCookies();
 
 var UserInfoConnectionString = builder.Configuration.GetConnectionString("UserInfo") ?? throw new InvalidOperationException("Connection string 'UserInfo' not found.");
-builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(UserInfoConnectionString));
-//builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(UserInfoConnectionString));
+/////builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(UserInfoConnectionString));
+var ProductConnectionString = builder.Configuration.GetConnectionString("Products") ?? throw new InvalidOperationException("Connection string 'Product' not found.");
+builder.Services.AddDbContext<ProductDbContext>(options => options.UseSqlite(ProductConnectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
