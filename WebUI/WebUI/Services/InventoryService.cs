@@ -10,7 +10,7 @@ public class InventoryService(ProductDbContext productDb)
 
     public async Task hi()
     {
-        var hi = await productDb.Products.Select(a => a).ToListAsync();
+        var hi = await productDb.Inventory.Select(a => a).ToListAsync();
     }
 
 }

@@ -1,19 +1,22 @@
 ﻿@page "/ItemCatalog"
 @using Models
+@using Data
+@using Components
 @inject IDialogService DialogService
+@inject ProductDbContext productDb
 
 @rendermode InteractiveServer
 
-<h1>Catalog</h1>
+<h1>Inventory</h1>
 
 <div class="container">
-    <div class="row">
+    <div id="Inventory" class="row">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <EditForm Model="product" OnSubmit="AddProduct" Enhance>
+                    <EditForm Model="product" OnSubmit="AddInventoryProduct" Enhance>
                         <div class="hstack gap-2">
-                            <label class="label-control">Fullname</label>
+                            <label class="label-control">Name</label>
                             <InputText @bind-Value="product.Name" class="form-control"></InputText>
                             <label class="label-control">Selected Quantity</label>
                             <InputNumber @bind-Value="SelectedQuantity" class="form-control "></InputNumber>
@@ -22,7 +25,7 @@
                     </EditForm>
                 </div>
                 <div class="card-body">
-                    <FluentDataGrid Items="@productsQueryable" Pagination="@pagination">
+                    <FluentDataGrid Items="InventoryQueryable" Pagination="@invetorypagination">
                         <PropertyColumn Property="@(p => p.Id)" Sortable="true" Align="Align.Center" />
                         <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
                             <ColumnOptions>
@@ -37,11 +40,38 @@
                             <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">
                                 Open Dialog
                             </FluentButton>
-
+                            <FluentButton @onclick="@(()=>DeleteInventoryProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
                         </TemplateColumn>
                     </FluentDataGrid>
+
+                    <FluentPaginator State="@invetorypagination" />
                 </div>
             </div>
+        </div>
+    </div>
+    <div id="ShoppingList" class="row">
+       <h1>Shopping List</h1>
+       <div class="card-body">
+            <FluentDataGrid Items="ShoppingListQueryable" Pagination="@ShoppingListpagination">
+                <PropertyColumn Property="@(p => p.Id)" Sortable="true" Align="Align.Center" />
+                <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
+                    <ColumnOptions>
+                        <div class="search-box">
+                            <input type="search" autofocus @onchange="SearchPerson" placeholder="Person name..." />
+                        </div>
+                    </ColumnOptions>
+                </PropertyColumn>
+                <PropertyColumn Title="Quantity" Property="@(p => p.Quantity)" Sortable="true" />
+                <TemplateColumn Title="Action">
+
+                    <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">
+                        Open Dialog
+                    </FluentButton>
+
+                </TemplateColumn>
+            </FluentDataGrid>
+
+            <FluentPaginator State="@ShoppingListpagination" />
         </div>
     </div>
 </div>
@@ -49,39 +79,42 @@
 @code {
 
     //Pagination
-    PaginationState pagination = new PaginationState { ItemsPerPage = 3 };
-    IQueryable<Product> productsQueryable = Enumerable.Empty<Product>().AsQueryable();
+    PaginationState invetorypagination = new PaginationState { ItemsPerPage = 3 };
+    PaginationState ShoppingListpagination = new PaginationState { ItemsPerPage = 3 };
+    IQueryable<Product> InventoryQueryable => productDb.Inventory.Where(a => true);
+    IQueryable<Product> ShoppingListQueryable => productDb.ShoppingList.Where(a => true);
 
     [SupplyParameterFromForm]
-    Product product { get; set; } = new();
-    int SelectedQuantity;
-    static List<Product> ProductsList = [];
+    InventoryProduct product { get; set; } = new();
+
+    int SelectedQuantity = 1;
 
     protected override void OnInitialized()
     {
-        ConvertListToQueryable();
+
     }
 
     async Task OpenDialogAsync(Product seletedProduct)
     {
         DialogParameters parameters = new()
-            {
-                Title = $"Editing {seletedProduct.Name}",
-                Width = "500px",
-                Height = "500px",
-                TrapFocus = false,
-                Modal = true,
-                PreventScroll = true
-            };
+        {
+            Title = $"Editing {seletedProduct.Name}",
+            Width = "500px",
+            Height = "500px",
+            TrapFocus = false,
+            Modal = true,
+            PreventScroll = true
+        };
 
         IDialogReference dialog = await DialogService.ShowDialogAsync<EditDialog>(seletedProduct, parameters);
-        DialogResult? result = await dialog.Result;
+        DialogResult result = await dialog.Result;
 
 
         if (result.Data is not null)
         {
-            Product? simplePerson = result.Data as Product;
-            Console.WriteLine($"Dialog closed by {simplePerson?.Name} {simplePerson?.Quantity} ({simplePerson?.Description}) - Canceled: {result.Cancelled}");
+            Product diaProduct = (Product)result.Data;
+            productDb.Update(diaProduct);
+            productDb.SaveChanges();
         }
         else
         {
@@ -89,65 +122,29 @@
         }
     }
 
-    private void AddProduct()
+    private void AddInventoryProduct()
     {
         if (product.Name is null) return;
-        ProductsList.Add(product);
+        productDb.Inventory.Add(product);
+        productDb.SaveChanges();
         product = new();
-        GetDataAgain();
         return;
-    }
-
-    // Load data from List to the Queryable container
-    private void ConvertListToQueryable()
-    {
-        if (ProductsList is null) return;
-        foreach (var person in ProductsList.OrderBy(_ => _.Id))
-        {
-            productsQueryable = productsQueryable.Concat(new[] { person }.AsQueryable());
-        }
-        pagination.TotalItemCountChanged += (sender, eventArgs) => StateHasChanged();
-    }
-
-    //clear container and reload
-    void GetDataAgain()
-    {
-        productsQueryable = Enumerable.Empty<Product>().AsQueryable();
-        ConvertListToQueryable();
     }
 
     void Edit(Product incomingModel)
     {
-      
+
     }
 
-    void Delete(Product incomingModel)
+    void DeleteInventoryProduct(Product incomingModel)
     {
-        ProductsList.Remove(ProductsList.FirstOrDefault(_ => _.Id == incomingModel.Id));
-        if (ProductsList is null) return;
-        GetDataAgain();
+        productDb.Inventory.Remove((InventoryProduct)incomingModel);
+        productDb.SaveChanges();
     }
 
-    //Search Person
-    void SearchPerson(ChangeEventArgs e)
+
+    private Task SearchPerson(ChangeEventArgs e)
     {
-        if (!string.IsNullOrEmpty(e.Value!.ToString()))
-        {
-            var result = ProductsList.Where(c => c.Name!.Contains(e.Value!.ToString()!, StringComparison.CurrentCultureIgnoreCase)).ToList();
-            productsQueryable = Enumerable.Empty<Product>().AsQueryable();
-            if (result.Count == 0)
-            {
-                return;
-            }
-
-            if (result.Any())
-            {
-                foreach (var person in result.OrderBy(_ => _.Id))
-                    productsQueryable = productsQueryable.Concat(new[] { person }.AsQueryable());
-            }
-            return;
-        }
-        GetDataAgain();
+        throw new NotImplementedException();
     }
-
 }

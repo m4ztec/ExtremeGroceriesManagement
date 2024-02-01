@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.DataGrid.EntityFrameworkAdapter" Version="4.3.1" />
     <ProjectReference Include="..\WebUI.Client\WebUI.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="8.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid.EntityFrameworkAdapter" Version="8.0.1" />
@@ -26,8 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Components\Components\" />
-    <Folder Include="Data\Migrations\" />
+    <Folder Include="Migrations\" />
   </ItemGroup>
 
 </Project>

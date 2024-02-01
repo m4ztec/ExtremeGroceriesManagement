@@ -27,7 +27,7 @@ builder.Services.AddAuthentication(options =>
     .AddIdentityCookies();
 
 var UserInfoConnectionString = builder.Configuration.GetConnectionString("UserInfo") ?? throw new InvalidOperationException("Connection string 'UserInfo' not found.");
-/////builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(UserInfoConnectionString));
+builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(UserInfoConnectionString));
 var ProductConnectionString = builder.Configuration.GetConnectionString("Products") ?? throw new InvalidOperationException("Connection string 'Product' not found.");
 builder.Services.AddDbContext<ProductDbContext>(options => options.UseSqlite(ProductConnectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -39,7 +39,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+//FuentUI stuff
 builder.Services.AddFluentUIComponents();
+builder.Services.AddDataGridEntityFrameworkAdapter();
 
 var app = builder.Build();
 
