@@ -14,19 +14,18 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <EditForm Model="product" OnSubmit="AddInventoryProduct" Enhance>
+                    <EditForm Model="inventoryProduct" OnSubmit="AddInventoryProduct" Enhance>
                         <div class="hstack gap-2">
                             <label class="label-control">Name</label>
-                            <InputText @bind-Value="product.Name" class="form-control"></InputText>
+                            <InputText @bind-Value="inventoryProduct.Name" class="form-control"></InputText>
                             <label class="label-control">Selected Quantity</label>
                             <InputNumber @bind-Value="SelectedQuantity" class="form-control "></InputNumber>
-                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="submit" class="btn btn-primary">Add</button>
                         </div>
                     </EditForm>
                 </div>
                 <div class="card-body">
                     <FluentDataGrid Items="InventoryQueryable" Pagination="@invetorypagination">
-                        <PropertyColumn Property="@(p => p.Id)" Sortable="true" Align="Align.Center" />
                         <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
                             <ColumnOptions>
                                 <div class="search-box">
@@ -36,11 +35,8 @@
                         </PropertyColumn>
                         <PropertyColumn Title="Quantity" Property="@(p => p.Quantity)" Sortable="true" />
                         <TemplateColumn Title="Action">
-
-                            <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">
-                                Open Dialog
-                            </FluentButton>
-                            <FluentButton @onclick="@(()=>DeleteInventoryProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
+                            <FluentButton @onclick="@(()=>OpenDialogAsync(context))" Appearance="Appearance.Accent">Edit</FluentButton>
+                            <FluentButton @onclick="@(()=>DeleteProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
                         </TemplateColumn>
                     </FluentDataGrid>
 
@@ -50,28 +46,38 @@
         </div>
     </div>
     <div id="ShoppingList" class="row">
-       <h1>Shopping List</h1>
-       <div class="card-body">
-            <FluentDataGrid Items="ShoppingListQueryable" Pagination="@ShoppingListpagination">
-                <PropertyColumn Property="@(p => p.Id)" Sortable="true" Align="Align.Center" />
-                <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
-                    <ColumnOptions>
-                        <div class="search-box">
-                            <input type="search" autofocus @onchange="SearchPerson" placeholder="Person name..." />
-                        </div>
-                    </ColumnOptions>
-                </PropertyColumn>
-                <PropertyColumn Title="Quantity" Property="@(p => p.Quantity)" Sortable="true" />
-                <TemplateColumn Title="Action">
+        <h1>Shopping List</h1>
+        <div class="card">
+            <div class="card-header">
+                <EditForm Model="ShoppingListProduct" OnSubmit="AddShoppingListProduct" Enhance>
+                    <div class="hstack gap-2">
+                        <label class="label-control">Name</label>
+                        <InputText @bind-Value="ShoppingListProduct.Name" class="form-control"></InputText>
+                        <label class="label-control">Selected Quantity</label>
+                        <InputNumber @bind-Value="SelectedQuantity" class="form-control "></InputNumber>
+                        <button type="submit" class="btn btn-primary">Add</button>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="card-body">
+                <FluentDataGrid Items="ShoppingListQueryable" Pagination="@ShoppingListpagination">
+                    <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
+                        <ColumnOptions>
+                            <div class="search-box">
+                                <input type="search" autofocus @onchange="SearchPerson" placeholder="Person name..." />
+                            </div>
+                        </ColumnOptions>
+                    </PropertyColumn>
+                    <PropertyColumn Title="Quantity" Property="@(p => p.Quantity)" Sortable="true" />
+                    <TemplateColumn Title="Action">
+                        <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">Edit</FluentButton>
+                        <FluentButton @onclick="@(()=>DeleteProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
+                        <FluentButton @onclick="@(()=>NoveToInventory(context))" Appearance="Appearance.Accent" BackgroundColor="Green">Add To Inventory</FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
 
-                    <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">
-                        Open Dialog
-                    </FluentButton>
-
-                </TemplateColumn>
-            </FluentDataGrid>
-
-            <FluentPaginator State="@ShoppingListpagination" />
+                <FluentPaginator State="@ShoppingListpagination" />
+            </div>
         </div>
     </div>
 </div>
@@ -81,11 +87,13 @@
     //Pagination
     PaginationState invetorypagination = new PaginationState { ItemsPerPage = 3 };
     PaginationState ShoppingListpagination = new PaginationState { ItemsPerPage = 3 };
-    IQueryable<Product> InventoryQueryable => productDb.Inventory.Where(a => true);
-    IQueryable<Product> ShoppingListQueryable => productDb.ShoppingList.Where(a => true);
+    IQueryable<InventoryProduct> InventoryQueryable => productDb.Inventory.Where(a => true);
+    IQueryable<ShoppingListProduct> ShoppingListQueryable => productDb.ShoppingList.Where(a => true);
 
     [SupplyParameterFromForm]
-    InventoryProduct product { get; set; } = new();
+    InventoryProduct inventoryProduct { get; set; } = new();
+    [SupplyParameterFromForm]
+    ShoppingListProduct ShoppingListProduct { get; set; } = new();
 
     int SelectedQuantity = 1;
 
@@ -122,23 +130,61 @@
         }
     }
 
-    private void AddInventoryProduct()
+    private void AddShoppingListProduct()
     {
-        if (product.Name is null) return;
-        productDb.Inventory.Add(product);
+        if (ShoppingListProduct.Name is null) return;
+        var hi = productDb.ShoppingList.Where(a => a.Name == ShoppingListProduct.Name).FirstOrDefault();
+        if (hi != null)
+        {
+            hi.Quantity += SelectedQuantity;
+            productDb.ShoppingList.Update(hi);
+            productDb.SaveChanges();
+            return;
+        }
+        productDb.ShoppingList.Add(ShoppingListProduct);
         productDb.SaveChanges();
-        product = new();
+        ShoppingListProduct = new();
         return;
     }
 
-    void Edit(Product incomingModel)
+    private void AddInventoryProduct()
     {
+        if (inventoryProduct.Name is null) return;
+        var hi = productDb.Inventory.Where(a => a.Name == inventoryProduct.Name).FirstOrDefault();
+        if(hi != null)
+        {
+            hi.Quantity += SelectedQuantity;
+            productDb.Inventory.Update(hi);
+            productDb.SaveChanges();
+            return;
+        }
+        productDb.Inventory.Add(inventoryProduct);
+        productDb.SaveChanges();
+        inventoryProduct = new();
+        return;
+    }
+
+    private void NoveToInventory(ShoppingListProduct incomingProduct)
+    {
+        var hi = productDb.Inventory.Where(a => a.Name == inventoryProduct.Name).FirstOrDefault();
+        if (hi != null)
+        {
+            hi.Quantity += incomingProduct.Quantity;
+            productDb.Inventory.Update(hi);
+            productDb.SaveChanges();
+            return;
+        }
+
+        productDb.Inventory.Add(new InventoryProduct(incomingProduct));
+        productDb.ShoppingList.Remove(incomingProduct);
+        productDb.SaveChanges();
+        return;
 
     }
 
-    void DeleteInventoryProduct(Product incomingModel)
+    void DeleteProduct(Product incomingModel)
     {
-        productDb.Inventory.Remove((InventoryProduct)incomingModel);
+        productDb.Remove(incomingModel);
         productDb.SaveChanges();
     }
 
