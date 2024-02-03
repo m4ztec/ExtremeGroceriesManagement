@@ -5,6 +5,5 @@ namespace WebUI.Data;
 
 public class ProductDbContext(DbContextOptions<ProductDbContext> options) : DbContext(options)
 {
-    public DbSet<InventoryProduct> Inventory { get; set; }
-    public DbSet<ShoppingListProduct> ShoppingList { get; set; }
+    public DbSet<Product> Products { get; set; }
 }

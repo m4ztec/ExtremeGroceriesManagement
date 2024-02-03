@@ -1,0 +1,122 @@
+﻿@page "/Inventory"
+@using Models
+@using Data
+@using Components
+@inject IDialogService DialogService
+@inject ProductDbContext productDb
+
+@rendermode InteractiveServer
+
+<h1>Inventory</h1>
+
+<div class="container">
+    <div id="Inventory" class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <EditForm Model="inventoryProduct" OnSubmit="AddInventoryProduct" Enhance>
+                        <div class="hstack gap-2">
+                            <label class="label-control">Name</label>
+                            <InputText @bind-Value="inventoryProduct.Name" class="form-control"></InputText>
+                            <label class="label-control">Selected Quantity</label>
+                            <InputNumber @bind-Value="SelectedQuantity" class="form-control "></InputNumber>
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        </div>
+                    </EditForm>
+                </div>
+                <div class="card-body">
+                    <FluentDataGrid Items="InventoryQueryable" Pagination="@invetorypagination">
+                        <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
+                            <ColumnOptions>
+                                <div class="search-box">
+                                    <input type="search" autofocus @onchange="SearchPerson" placeholder="Person name..." />
+                                </div>
+                            </ColumnOptions>
+                        </PropertyColumn>
+                        <PropertyColumn Title="Existing Quantity" Property="@(p => p.ExistingQuantity)" Sortable="true" />
+                        <PropertyColumn Title="Desired Quantity" Property="@(p => p.DesiredQuantity)" Sortable="true" />
+                        <TemplateColumn Title="Action">
+                            <FluentButton @onclick="@(()=>OpenDialogAsync(context))" Appearance="Appearance.Accent">Edit</FluentButton>
+                            <FluentButton @onclick="@(()=>DeleteProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+
+                    <FluentPaginator State="@invetorypagination" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    //Pagination
+    PaginationState invetorypagination = new PaginationState { ItemsPerPage = 3 };
+    IQueryable<Product> InventoryQueryable => productDb.Products.Where(a => true);
+
+    [SupplyParameterFromForm]
+    Product inventoryProduct { get; set; } = new();
+  
+    int SelectedQuantity = 1;
+
+    protected override void OnInitialized()
+    {
+
+    }
+
+    async Task OpenDialogAsync(Product seletedProduct)
+    {
+        DialogParameters parameters = new()
+        {
+            Title = $"Editing {seletedProduct.Name}",
+            Width = "500px",
+            Height = "500px",
+            TrapFocus = false,
+            Modal = true,
+            PreventScroll = true
+        };
+
+        IDialogReference dialog = await DialogService.ShowDialogAsync<EditDialog>(seletedProduct, parameters);
+        DialogResult result = await dialog.Result;
+
+
+        if (result.Data is not null)
+        {
+            Product diaProduct = (Product)result.Data;
+            productDb.Update(diaProduct);
+            productDb.SaveChanges();
+        }
+        else
+        {
+            Console.WriteLine($"Dialog closed - Canceled: {result.Cancelled}");
+        }
+    }
+
+    private void AddInventoryProduct()
+    {
+        if (inventoryProduct.Name is null) return;
+        var ExistingProduct = productDb.Products.Where(a => a.Name == inventoryProduct.Name).FirstOrDefault();
+        if (ExistingProduct != null)
+        {
+            ExistingProduct.ExistingQuantity += SelectedQuantity;
+            productDb.Products.Update(ExistingProduct);
+            productDb.SaveChanges();
+            return;
+        }
+        productDb.Products.Add(inventoryProduct);
+        productDb.SaveChanges();
+        inventoryProduct = new();
+        return;
+    }
+
+    void DeleteProduct(Product incomingModel)
+    {
+        productDb.Remove(incomingModel);
+        productDb.SaveChanges();
+    }
+
+    private Task SearchPerson(ChangeEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+}

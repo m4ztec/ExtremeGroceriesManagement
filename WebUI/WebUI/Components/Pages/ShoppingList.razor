@@ -1,0 +1,129 @@
+﻿@page "/ShoppingList"
+@using Models
+@using Data
+@using Components
+@inject IDialogService DialogService
+@inject ProductDbContext productDb
+
+@rendermode InteractiveServer
+
+<h1>ShoppingList</h1>
+
+<div class="container">
+    <div id="ShoppingList" class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <EditForm Model="ShoppingListProduct" OnSubmit="AddShoppingListProduct" Enhance>
+                        <div class="hstack gap-2">
+                            <label class="label-control">Name</label>
+                            <InputText @bind-Value="ShoppingListProduct.Name" class="form-control"></InputText>
+                            <label class="label-control">Selected Quantity</label>
+                            <InputNumber @bind-Value="SelectedQuantity" class="form-control "></InputNumber>
+                            <button type="submit" class="btn btn-primary">Add</button>
+                        </div>
+                    </EditForm>
+                </div>
+                <div class="card-body">
+                    <FluentDataGrid Items="ShoppingListQueryable" Pagination="@ShoppingListpagination">
+                        <PropertyColumn Property="@(c => c.Name)" Sortable="true" Class="country-name">
+                            <ColumnOptions>
+                                <div class="search-box">
+                                    <input type="search" autofocus @onchange="SearchProductByName" placeholder="Product name..." />
+                                </div>
+                            </ColumnOptions>
+                        </PropertyColumn>
+                        <PropertyColumn Title="Existing Quantity" Property="@(p => p.ExistingQuantity)" Sortable="true" />
+                        <PropertyColumn Title="Desired Quantity" Property="@(p => p.DesiredQuantity)" Sortable="true" />
+                        <TemplateColumn Title="Action">
+                            <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">Edit</FluentButton>
+                            <FluentButton @onclick="@(()=>DeleteProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
+                            <FluentButton @onclick="@(()=>NoveToInventory(context))" Appearance="Appearance.Accent" BackgroundColor="Green">Add To Inventory</FluentButton>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+
+                    <FluentPaginator State="@ShoppingListpagination" />
+                </div>
+             </div>
+         </div>
+    </div>
+</div>
+
+@code {
+    PaginationState ShoppingListpagination = new PaginationState { ItemsPerPage = 3 };
+    IQueryable<Product> ShoppingListQueryable => productDb.Products.Where(a => a.DesiredQuantity > a.ExistingQuantity);
+
+    int SelectedQuantity = 1;
+
+    [SupplyParameterFromForm]
+    Product ShoppingListProduct { get; set; } = new();
+
+    private void AddShoppingListProduct()
+    {
+        if (ShoppingListProduct.Name is null) return;
+        var ExistingProduct = productDb.Products.Where(a => a.Name == ShoppingListProduct.Name).FirstOrDefault();
+        if (ExistingProduct != null)
+        {
+            ExistingProduct.DesiredQuantity += SelectedQuantity;
+            productDb.Products.Update(ExistingProduct);
+            productDb.SaveChanges();
+            return;
+        }
+        productDb.Products.Add(ShoppingListProduct);
+        productDb.SaveChanges();
+        ShoppingListProduct = new();
+        return;
+    }
+
+    private void NoveToInventory(Product incomingProduct)
+    {
+        incomingProduct.ExistingQuantity = incomingProduct.DesiredQuantity;
+
+        productDb.Products.Update(incomingProduct);
+        productDb.SaveChanges();
+        return;
+    }
+
+    void DeleteProduct(Product incomingModel)
+    {
+        incomingModel.DesiredQuantity = incomingModel.ExistingQuantity;
+
+        productDb.Products.Update(incomingModel);
+        productDb.SaveChanges();
+    }
+
+    async Task OpenDialogAsync(Product seletedProduct)
+    {
+        DialogParameters parameters = new()
+        {
+            Title = $"Editing {seletedProduct.Name}",
+            Width = "500px",
+            Height = "500px",
+            TrapFocus = false,
+            Modal = true,
+            PreventScroll = true
+        };
+
+        IDialogReference dialog = await DialogService.ShowDialogAsync<EditDialog>(seletedProduct, parameters);
+        DialogResult result = await dialog.Result;
+
+
+        if (result.Data is not null)
+        {
+            Product diaProduct = (Product)result.Data;
+            productDb.Update(diaProduct);
+            productDb.SaveChanges();
+        }
+        else
+        {
+            Console.WriteLine($"Dialog closed - Canceled: {result.Cancelled}");
+        }
+    }
+
+
+    private Task SearchProductByName(ChangeEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+
+}

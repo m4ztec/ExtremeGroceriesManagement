@@ -17,7 +17,7 @@ namespace WebUI.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
 
-            modelBuilder.Entity("WebUI.Models.InventoryProduct", b =>
+            modelBuilder.Entity("WebUI.Models.Product", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -30,14 +30,17 @@ namespace WebUI.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("DesiredQuantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ExistingQuantity")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Owner")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ShopsAvailable")
                         .IsRequired()
@@ -48,41 +51,7 @@ namespace WebUI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Inventory");
-                });
-
-            modelBuilder.Entity("WebUI.Models.ShoppingListProduct", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Categories")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Owner")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ShopsAvailable")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("SupposedPrice")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ShoppingList");
+                    b.ToTable("Products");
                 });
 #pragma warning restore 612, 618
         }
