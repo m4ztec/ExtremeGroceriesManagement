@@ -2,16 +2,22 @@
 @using Models
 @using Data
 @using Components
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity;
+
 @inject IDialogService DialogService
 @inject ProductDbContext productDb
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager;
 
 @rendermode InteractiveServer
 
-<h1>ShoppingList</h1>
+@attribute [Authorize]
 
 <div class="container">
+    <h1>Shopping List</h1>
     <div id="ShoppingList" class="row">
-        <div class="col-md-12">
+        <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <EditForm Model="ShoppingListProduct" OnSubmit="AddShoppingListProduct" Enhance>
@@ -19,7 +25,7 @@
                             <label class="label-control">Name</label>
                             <InputText @bind-Value="ShoppingListProduct.Name" class="form-control"></InputText>
                             <label class="label-control">Selected Quantity</label>
-                            <InputNumber @bind-Value="SelectedQuantity" class="form-control "></InputNumber>
+                            <InputNumber @bind-Value="ShoppingListProduct.DesiredQuantity" class="form-control "></InputNumber>
                             <button type="submit" class="btn btn-primary">Add</button>
                         </div>
                     </EditForm>
@@ -35,44 +41,62 @@
                         </PropertyColumn>
                         <PropertyColumn Title="Existing Quantity" Property="@(p => p.ExistingQuantity)" Sortable="true" />
                         <PropertyColumn Title="Desired Quantity" Property="@(p => p.DesiredQuantity)" Sortable="true" />
-                        <TemplateColumn Title="Action">
-                            <FluentButton @onclick="@(()=> OpenDialogAsync(context))" Appearance="Appearance.Accent">Edit</FluentButton>
-                            <FluentButton @onclick="@(()=>DeleteProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
-                            <FluentButton @onclick="@(()=>NoveToInventory(context))" Appearance="Appearance.Accent" BackgroundColor="Green">Add To Inventory</FluentButton>
+                        <TemplateColumn Context="inputProduct" Title="Action">
+                            <FluentButton @onclick="@(()=> OpenDialogAsync(inputProduct))" Appearance="Appearance.Accent">Edit</FluentButton>
+                            <FluentButton @onclick="@(()=>DeleteProduct(inputProduct))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
+                            <FluentButton @onclick="@(()=>NoveToInventory(inputProduct))" Appearance="Appearance.Accent" BackgroundColor="Green">Add To Inventory</FluentButton>
                         </TemplateColumn>
                     </FluentDataGrid>
 
                     <FluentPaginator State="@ShoppingListpagination" />
                 </div>
-             </div>
-         </div>
+            </div>
+        </div>
     </div>
 </div>
 
 @code {
-    PaginationState ShoppingListpagination = new PaginationState { ItemsPerPage = 3 };
-    IQueryable<Product> ShoppingListQueryable => productDb.Products.Where(a => a.DesiredQuantity > a.ExistingQuantity);
+    IdentityUser? user;
 
-    int SelectedQuantity = 1;
+    PaginationState ShoppingListpagination = new PaginationState { ItemsPerPage = 3 };
+    IQueryable<Product> ShoppingListQueryable => productDb.Products.Where(a => a.DesiredQuantity > a.ExistingQuantity && a.Owner == user.Id);
 
     [SupplyParameterFromForm]
     Product ShoppingListProduct { get; set; } = new();
 
-    private void AddShoppingListProduct()
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userClaims = authState.User;
+        if ((userClaims.Identity?.IsAuthenticated ?? false) && userClaims != null)
+        {
+            user = await UserManager.FindByNameAsync(userClaims.Identity.Name ?? throw new Exception("User without Name"));
+        }
+    }
+
+    private async void AddShoppingListProduct()
     {
         if (ShoppingListProduct.Name is null) return;
         var ExistingProduct = productDb.Products.Where(a => a.Name == ShoppingListProduct.Name).FirstOrDefault();
-        if (ExistingProduct != null)
+
+        if (ExistingProduct == null)
         {
-            ExistingProduct.DesiredQuantity += SelectedQuantity;
-            productDb.Products.Update(ExistingProduct);
+            ShoppingListProduct.Owner = user?.Id;
+            productDb.Products.Add(ShoppingListProduct);
             productDb.SaveChanges();
+            ShoppingListProduct = new();
             return;
         }
-        productDb.Products.Add(ShoppingListProduct);
-        productDb.SaveChanges();
-        ShoppingListProduct = new();
-        return;
+
+        var shouldAdd = await OpenConfirmationDialogAsync(ShoppingListProduct);
+        if (shouldAdd)
+        {
+            ExistingProduct.DesiredQuantity += ShoppingListProduct.DesiredQuantity;
+            productDb.Products.Update(ExistingProduct);
+            productDb.SaveChanges();
+            ShoppingListProduct = new();
+            StateHasChanged();
+        }
     }
 
     private void NoveToInventory(Product incomingProduct)
@@ -80,8 +104,7 @@
         incomingProduct.ExistingQuantity = incomingProduct.DesiredQuantity;
 
         productDb.Products.Update(incomingProduct);
-        productDb.SaveChanges();
-        return;
+        productDb.SaveChanges();   
     }
 
     void DeleteProduct(Product incomingModel)
@@ -118,6 +141,32 @@
         {
             Console.WriteLine($"Dialog closed - Canceled: {result.Cancelled}");
         }
+    }
+
+    async Task<bool> OpenConfirmationDialogAsync(Product seletedProduct)
+    {
+        DialogParameters parameters = new()
+            {
+                Title = $"{seletedProduct.Name}",
+                Width = "500px",
+                Height = "200px",
+                TrapFocus = false,
+                Modal = true,
+                PreventScroll = true,
+                ShowDismiss = true,
+                DialogType = DialogType.MessageBox
+                
+            };
+
+        IDialogReference dialog = await DialogService.ShowDialogAsync<ConfirmShoppingListAdditionDialog>(seletedProduct, parameters);
+        DialogResult result = await dialog.Result;
+
+        if (result.Data != null)
+        {
+            return (bool)result.Data;
+        }
+
+        return false;
     }
 
 

@@ -2,14 +2,23 @@
 @using Models
 @using Data
 @using Components
+@using Account
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity;
+
 @inject IDialogService DialogService
 @inject ProductDbContext productDb
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager;
 
+@attribute [Authorize]
 @rendermode InteractiveServer
 
-<h1>Inventory</h1>
-
+   
 <div class="container">
+    <AuthorizeView>
+        <h1>Inventory of @context.User.Identity?.Name!</h1>
+    </AuthorizeView>
     <div id="Inventory" class="row">
         <div class="col-md-12">
             <div class="card">
@@ -33,11 +42,12 @@
                                 </div>
                             </ColumnOptions>
                         </PropertyColumn>
+                        <PropertyColumn Property="@(p => p.Owner)"/>
                         <PropertyColumn Title="Existing Quantity" Property="@(p => p.ExistingQuantity)" Sortable="true" />
                         <PropertyColumn Title="Desired Quantity" Property="@(p => p.DesiredQuantity)" Sortable="true" />
-                        <TemplateColumn Title="Action">
-                            <FluentButton @onclick="@(()=>OpenDialogAsync(context))" Appearance="Appearance.Accent">Edit</FluentButton>
-                            <FluentButton @onclick="@(()=>DeleteProduct(context))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
+                        <TemplateColumn Context="inputProduct" Title="Action">
+                            <FluentButton @onclick="@(()=>OpenDialogAsync(inputProduct))" Appearance="Appearance.Accent">Edit</FluentButton>
+                            <FluentButton @onclick="@(()=>DeleteProduct(inputProduct))" Appearance="Appearance.Accent" BackgroundColor="Red">Delete</FluentButton>
                         </TemplateColumn>
                     </FluentDataGrid>
 
@@ -49,19 +59,24 @@
 </div>
 
 @code {
+    IdentityUser? user;
 
-    //Pagination
     PaginationState invetorypagination = new PaginationState { ItemsPerPage = 3 };
-    IQueryable<Product> InventoryQueryable => productDb.Products.Where(a => true);
+    IQueryable<Product> InventoryQueryable => productDb.Products.Where(a => a.Owner == user.Id);
 
     [SupplyParameterFromForm]
     Product inventoryProduct { get; set; } = new();
-  
+
     int SelectedQuantity = 1;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userClaims = authState.User;
+        if ((userClaims.Identity?.IsAuthenticated ?? false) && userClaims != null )
+        {
+            user = await UserManager.FindByNameAsync(userClaims.Identity.Name ?? throw new Exception("User without Name"));      
+        }
     }
 
     async Task OpenDialogAsync(Product seletedProduct)
@@ -103,6 +118,8 @@
             productDb.SaveChanges();
             return;
         }
+
+        inventoryProduct.Owner = user?.Id;
         productDb.Products.Add(inventoryProduct);
         productDb.SaveChanges();
         inventoryProduct = new();

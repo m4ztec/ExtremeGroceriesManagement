@@ -1,0 +1,48 @@
+﻿@using Models
+@implements IDialogContentComponent
+
+@* Header *@
+<FluentDialogHeader ShowDismiss="false">
+    <FluentStack VerticalAlignment="VerticalAlignment.Center">
+        <FluentIcon Value="@(new Icons.Regular.Size24.WindowApps())" />
+        <FluentLabel Typo="Typography.PaneHeader">
+            @Dialog.Instance.Parameters.Title already exist in the inventory
+        </FluentLabel>
+    </FluentStack>
+</FluentDialogHeader>
+
+@* Body *@
+<FluentDialogBody Style="padding: 10px">
+    <FluentLabel Style="margin-bottom: 16px;">
+            Do you want to add @Content.DesiredQuantity to the product Desired Quantity?
+    </FluentLabel>
+    <FluentButton Appearance="Appearance.Accent" OnClick="@SaveAsync">Yes</FluentButton>
+    <FluentButton Appearance="Appearance.Neutral" OnClick="@CancelAsync">NO</FluentButton>
+</FluentDialogBody>
+
+<FluentDialogFooter Visible=false>
+    <FluentButton Appearance="Appearance.Accent" OnClick="@SaveAsync">Save</FluentButton>
+    <FluentButton Appearance="Appearance.Neutral" OnClick="@CancelAsync">Cancel</FluentButton>
+</FluentDialogFooter>
+@code {
+    [Parameter]
+    public Product Content { get; set; } = default!;
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    private void ToggleDialogPrimaryActionButton(bool enable)
+    {
+        Dialog!.TogglePrimaryActionButton(enable);
+    }
+
+    private async Task SaveAsync()
+    {
+        await Dialog!.CloseAsync<bool>(true);
+    }
+
+    private async Task CancelAsync()
+    {
+        await Dialog!.CancelAsync<bool>(false);
+    }
+}
