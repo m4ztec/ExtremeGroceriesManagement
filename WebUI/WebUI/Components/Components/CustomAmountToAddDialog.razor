@@ -1,0 +1,51 @@
+﻿@using Models
+@implements IDialogContentComponent
+
+@* Header *@
+<FluentDialogHeader ShowDismiss="false">
+    <FluentStack VerticalAlignment="VerticalAlignment.Center">
+        <FluentIcon Value="@(new Icons.Regular.Size24.WindowApps())" />
+        <FluentLabel Typo="Typography.PaneHeader">
+            @Content
+        </FluentLabel>
+
+    </FluentStack>
+</FluentDialogHeader>
+
+@* Body *@
+<FluentDialogBody>
+    <FluentNumberField @bind-Value="@SelectedAmount">Amount to Buy:</FluentNumberField>
+</FluentDialogBody>
+
+@* Footer *@
+<FluentDialogFooter>
+    <FluentStack VerticalAlignment="VerticalAlignment.Top" HorizontalAlignment="HorizontalAlignment.Start">
+        <FluentButton Appearance="Appearance.Accent" OnClick="@SaveAsync">Buy</FluentButton>
+        <FluentButton Appearance="Appearance.Neutral" OnClick="@CancelAsync">Cancel</FluentButton>
+    </FluentStack>
+</FluentDialogFooter>
+
+@code {
+    [Parameter]
+    public string Content { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    private int SelectedAmount;
+
+    private void ToggleDialogPrimaryActionButton(bool enable)
+    {
+        Dialog!.TogglePrimaryActionButton(enable);
+    }
+
+    private async Task SaveAsync()
+    {
+        await Dialog!.CloseAsync<int>(SelectedAmount);
+    }
+
+    private async Task CancelAsync()
+    {
+        await Dialog!.CancelAsync();
+    }
+}

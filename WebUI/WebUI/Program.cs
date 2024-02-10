@@ -24,6 +24,12 @@ builder.Services.AddAuthentication(options =>
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
         options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
     })
+    .AddGoogle(googleOptions =>
+    {
+        googleOptions.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? throw new InvalidOperationException("No Google App Credentials");
+        googleOptions.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw new InvalidOperationException("No Google App Credentials"); ;
+
+    })
     .AddIdentityCookies();
 
 var UserInfoConnectionString = builder.Configuration.GetConnectionString("UserInfo") ?? throw new InvalidOperationException("Connection string 'UserInfo' not found.");
